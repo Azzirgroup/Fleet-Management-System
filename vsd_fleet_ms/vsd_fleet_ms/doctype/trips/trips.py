@@ -125,6 +125,17 @@ class Trips(Document):
             self.date = datetime.datetime.now()
         # validate_requested_funds(self)
         self.validate_main_route_inputs()
+        self.calculate_total_main_route_steps_information()
+    
+    def calculate_total_main_route_steps_information(self):
+        total_distance = 0
+        total_fuel = 0
+        for main_route_step in self.main_route_steps:
+            total_distance += main_route_step.distance
+            total_fuel += main_route_step.fuel_consumption_qty
+        
+        self.total_distance = total_distance
+        self.total_fuel = total_fuel
 
     def validate_fuel_requests(self):
         make_request = False

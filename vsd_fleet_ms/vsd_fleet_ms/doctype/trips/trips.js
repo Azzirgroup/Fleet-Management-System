@@ -7,6 +7,9 @@ frappe.ui.form.on('Trips', {
 		requested_total();
 		rejected_total();
 		fuel_amount();
+		if(frm.doc.docstatus === 1){
+			create_sales_invoice_from_trip(frm)
+		}
 		if (frm.doc.trip_completed == 0 && frm.doc.trip_status != "Breakdown") {
             frm.add_custom_button(__("Complete Trip"), function () {
                 frm.set_value("trip_completed", 1);
@@ -354,5 +357,39 @@ function fuel_amount(){
 	content += '<p class="text-muted small">Total Fuel Approved: <b>' + approved_fuel.toLocaleString() + '</b></p>';
 	content += '<p class="text-muted small">Total Fuel Rejected: <b>' + rejected_fuel.toLocaleString() + '</b></p>';
 	cur_frm.get_field("html4").wrapper.innerHTML = content;
+
+}
+function create_sales_invoice_from_trip(frm) {
+    if (!frm.is_new()) {
+        frappe.db.get_list('Sales Invoice', {
+            filters: {
+                trip_id: frm.doc.name,
+                docstatus: ['!=', 2]
+            },
+            limit_page_length: 1
+        }).then(function(invoices) {
+            if (invoices.length > 0) {
+                frm.add_custom_button("View Sales Invoice", function() {
+                    frappe.set_route("Form", "Sales Invoice", invoices[0].name);
+                });
+            } else {
+                frm.add_custom_button("Create Sales Invoice", function () {
+                    frappe.call({
+                        method: "pitot_energy.services.rest.create_sales_invoice_from_trip",
+                        args: { trip_name: frm.doc.name },
+                        freeze: true,
+                        freeze_message: "Creating Sales Invoice...",
+                        callback: function (r) {
+                            if(r.message) {
+                                frappe.set_route("Form", "Sales Invoice", r.message);
+                            }
+                        }
+                    });
+                });
+            }
+        });
+    }
+
+
 
 }
