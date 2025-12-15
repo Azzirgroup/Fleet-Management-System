@@ -9,8 +9,9 @@
  "hide_custom": 0,
  "icon": "map",
  "idx": 0,
+ "indicator_color": "",
  "is_hidden": 0,
- "label": "Fleet MS",
+ "label": "Tiger Speed",
  "links": [
   {
    "hidden": 0,
@@ -177,10 +178,10 @@
    "type": "Link"
   }
  ],
- "modified": "2025-12-10 17:28:39.479604",
+ "modified": "2025-12-15 12:39:16.774256",
  "modified_by": "Administrator",
  "module": "VSD Fleet MS",
- "name": "Fleet MS",
+ "name": "Tiger Speed",
  "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
@@ -195,5 +196,5 @@
  "roles": [],
  "sequence_id": 1.0,
  "shortcuts": [],
- "title": "Fleet MS"
+ "title": "Tiger Speed"
 }

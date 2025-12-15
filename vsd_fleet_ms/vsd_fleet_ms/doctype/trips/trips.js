@@ -15,15 +15,42 @@ frappe.ui.form.on('Trips', {
                 frm.set_value("trip_completed", 1);
 				frm.set_value("trip_completed_date", frappe.datetime.nowdate());
 				var truck = frm.doc.truck_number;
-				frm.save();
-                if (frm.doc.transporter_type == "In House") {
-					frappe.db.set_value('Truck', truck, {
-						trans_ms_current_trip: '',
-                        status: 'Idle'
-                    }).then(r => {
-						frappe.msgprint(__(`Truck ${truck} is Available now`));
-                    });
-                }
+				frm.save().then(() => {
+					// Update truck status if In House
+					if (frm.doc.transporter_type == "In House") {
+						frappe.db.set_value('Truck', truck, {
+							trans_ms_current_trip: '',
+							status: 'Idle'
+						}).then(r => {
+							frappe.msgprint(__(`Truck ${truck} is Available now`));
+						});
+					}
+
+					// Auto-create Sales Invoice
+					frappe.call({
+						method: "pitot_energy.services.rest.create_sales_invoice_from_trip",
+						args: { trip_name: frm.doc.name },
+						freeze: true,
+						freeze_message: "Creating Sales Invoice...",
+						callback: function (r) {
+							if (r.message) {
+								frappe.msgprint({
+									title: __('Sales Invoice Created'),
+									indicator: 'green',
+									message: __('Sales Invoice {0} has been created.', ['<a href="/app/sales-invoice/' + r.message + '">' + r.message + '</a>'])
+								});
+								frm.reload_doc();
+							}
+						},
+						error: function(r) {
+							frappe.msgprint({
+								title: __('Error'),
+								indicator: 'red',
+								message: __('Could not create Sales Invoice. Please create it manually.')
+							});
+						}
+					});
+				});
             }, __('Actions'));
         }
 		if(frm.doc.trip_completed == 0 && frm.doc.trip_status == "Pending" && frm.doc.docstatus == 0){
