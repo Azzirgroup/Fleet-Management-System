@@ -22,9 +22,8 @@ class Trips(Document):
         self.validate_request_status()
 
     def on_submit(self):
-        if self.transporter_type == "In House":
-            if not self.stock_out_entry:
-                frappe.throw(_("Stock Out Entry is not set"))
+        # Stock out entry validation disabled - manual trips don't require it
+        pass
 
     def onload(self):
 

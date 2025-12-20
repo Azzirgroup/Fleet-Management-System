@@ -211,4 +211,5 @@ fixtures = [
             ]
         ],
     },
+    {"dt": "Workspace", "filters": [["module", "=", "VSD Fleet MS"]]},
 ]

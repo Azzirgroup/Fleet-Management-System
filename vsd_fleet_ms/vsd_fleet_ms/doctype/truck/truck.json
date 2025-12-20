@@ -21,6 +21,7 @@
   "acquisition_date",
   "status",
   "rate_per_distance",
+  "truck_owner",
   "account",
   "column_break_y9xcd",
   "manufacturing_year",
@@ -248,6 +249,15 @@
    "label": "Rate Per Distance"
   },
   {
+   "fieldname": "truck_owner",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Truck Owner",
+   "options": "Truck Owner"
+  },
+  {
+   "fetch_from": "truck_owner.account",
    "fieldname": "account",
    "fieldtype": "Link",
    "label": "Account",
