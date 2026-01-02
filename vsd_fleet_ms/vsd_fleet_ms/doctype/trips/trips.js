@@ -10,12 +10,14 @@ frappe.ui.form.on('Trips', {
 		if(frm.doc.docstatus === 1){
 			create_sales_invoice_from_trip(frm)
 		}
-		if (frm.doc.trip_completed == 0 && frm.doc.trip_status != "Breakdown") {
+		if (frm.doc.trip_completed == 0 && frm.doc.trip_status != "Breakdown" && frm.doc.trip_status != "Completed") {
             frm.add_custom_button(__("Complete Trip"), function () {
                 frm.set_value("trip_completed", 1);
+				frm.set_value("trip_status", "Completed");
 				frm.set_value("trip_completed_date", frappe.datetime.nowdate());
 				var truck = frm.doc.truck_number;
-				frm.save().then(() => {
+				// Use 'Update' for submitted documents
+				frm.save(frm.doc.docstatus === 1 ? 'Update' : 'Save').then(() => {
 					// Update truck status if In House
 					if (frm.doc.transporter_type == "In House") {
 						frappe.db.set_value('Truck', truck, {
@@ -53,7 +55,7 @@ frappe.ui.form.on('Trips', {
 				});
             }, __('Actions'));
         }
-		if(frm.doc.trip_completed == 0 && frm.doc.trip_status == "Pending" && frm.doc.docstatus == 0){
+		if(frm.doc.trip_completed == 0 && frm.doc.trip_status == "Open" && frm.doc.docstatus == 0){
 			frm.add_custom_button(__('Create Breakdown Entry'), function() {
 				frappe.confirm('Do you want to create breakdown entry?',function() {
 					frappe.call({
@@ -225,6 +227,20 @@ frappe.ui.form.on('Trips', {
 
 			frm.doc.total_days_at_the_border = difference_days;
 			frm.refresh_field("total_days_at_the_border");
+		}
+	},
+	trip_completed: (frm) => {
+		// Sync trip_status when trip_completed checkbox changes
+		if (frm.doc.trip_completed == 1) {
+			frm.set_value("trip_status", "Completed");
+			if (!frm.doc.trip_completed_date) {
+				frm.set_value("trip_completed_date", frappe.datetime.nowdate());
+			}
+		} else {
+			// Only reset to Open if not in Breakdown status
+			if (frm.doc.trip_status != "Breakdown") {
+				frm.set_value("trip_status", "Open");
+			}
 		}
 	}
 });

@@ -548,12 +548,14 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "Pending",
+   "allow_on_submit": 1,
+   "default": "Open",
    "fieldname": "trip_status",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Trip Status",
-   "options": "Pending\nCompleted\nBreakdown",
-   "read_only": 1
+   "options": "Open\nCompleted\nBreakdown"
   },
   {
    "depends_on": "eval:doc.trip_status == \"Breakdown\"",

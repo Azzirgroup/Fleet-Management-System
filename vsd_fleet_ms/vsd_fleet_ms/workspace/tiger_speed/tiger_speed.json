@@ -1,7 +1,7 @@
 {
  "charts": [],
  "content": "[{\"id\":\"D_r2tq24Wk\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">VSD Fleet</span>\",\"col\":12}},{\"id\":\"eEKQ_vxz6K\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"_FHA1FtdB9\",\"type\":\"card\",\"data\":{\"card_name\":\"Trips\",\"col\":4}},{\"id\":\"tiOnXE60vg\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"tGO5Aw0FPT\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"IlKrKLemox\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Sales Invoices\",\"col\":12}},{\"id\":\"Fvhi34VUqU\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
- "creation": "2025-12-22 01:55:18.484442",
+ "creation": "2026-01-01 13:26:16.245934",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
@@ -36,9 +36,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Truck Work Order",
+   "label": "Truck Job Card",
    "link_count": 0,
-   "link_to": "Truck Work Order",
+   "link_to": "Truck Job Card",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -183,9 +183,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Truck Work Order",
+   "label": "Truck Job Card",
    "link_count": 0,
-   "link_to": "Truck Work Order",
+   "link_to": "Truck Job Card",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -241,7 +241,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-12-22 02:02:30.737330",
+ "modified": "2026-01-01 13:27:53.588734",
  "modified_by": "Administrator",
  "module": "VSD Fleet MS",
  "name": "Tiger Speed",

@@ -125,6 +125,7 @@ class Trips(Document):
         # validate_requested_funds(self)
         self.validate_main_route_inputs()
         self.calculate_total_main_route_steps_information()
+        self.sync_trip_status_with_completed()
     
     def calculate_total_main_route_steps_information(self):
         total_distance = 0
@@ -132,9 +133,24 @@ class Trips(Document):
         for main_route_step in self.main_route_steps:
             total_distance += main_route_step.distance
             total_fuel += main_route_step.fuel_consumption_qty
-        
+
         self.total_distance = total_distance
         self.total_fuel = total_fuel
+
+    def sync_trip_status_with_completed(self):
+        """Sync trip_status with trip_completed checkbox"""
+        # Don't modify if in Breakdown status
+        if self.trip_status == "Breakdown":
+            return
+
+        if self.trip_completed:
+            self.trip_status = "Completed"
+            if not self.trip_completed_date:
+                self.trip_completed_date = nowdate()
+        else:
+            # Only reset to Open if not completed
+            if self.trip_status == "Completed":
+                self.trip_status = "Open"
 
     def validate_fuel_requests(self):
         make_request = False
@@ -477,7 +493,7 @@ def create_resumption_trip(docname):
 
     new_trip.update(old_trip.as_dict())
     new_trip.location_update = []
-    new_trip.trip_status = "Pending"
+    new_trip.trip_status = "Open"
     new_trip.stock_out_entry = ""
 
     new_trip.insert()

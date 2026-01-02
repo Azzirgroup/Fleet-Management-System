@@ -38,6 +38,9 @@
   "fuel_uom",
   "trans_ms_fuel_warehouse",
   "chassis_number",
+  "loading_plan_section",
+  "loading_plan",
+  "total_capacity",
   "transport_section",
   "trans_ms_driver",
   "column_break_gxeno",
@@ -262,6 +265,23 @@
    "fieldtype": "Link",
    "label": "Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "loading_plan_section",
+   "fieldtype": "Section Break",
+   "label": "Loading Plan"
+  },
+  {
+   "fieldname": "loading_plan",
+   "fieldtype": "Table",
+   "label": "Compartments",
+   "options": "Truck Compartment"
+  },
+  {
+   "fieldname": "total_capacity",
+   "fieldtype": "Float",
+   "label": "Total Capacity",
+   "read_only": 1
   }
  ],
  "image_field": "image",

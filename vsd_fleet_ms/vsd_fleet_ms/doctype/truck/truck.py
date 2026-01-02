@@ -6,6 +6,8 @@ from frappe.model.document import Document
 
 class Truck(Document):
 	def before_save(self):
+		# Calculate total capacity from loading plan compartments
+		self.calculate_total_capacity()
 		current_status = frappe.db.get_value("Truck",self.name,"status")
 
 		if current_status:
@@ -43,4 +45,12 @@ class Truck(Document):
 				self.status = "Disabled"
 		if self.status == "Disabled":
 			self.disabled == 1
+
+	def calculate_total_capacity(self):
+		"""Calculate total capacity from all compartments"""
+		total = 0
+		if self.loading_plan:
+			for compartment in self.loading_plan:
+				total += compartment.capacity or 0
+		self.total_capacity = total
 
