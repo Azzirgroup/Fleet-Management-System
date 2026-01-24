@@ -1,7 +1,12 @@
 {
- "charts": [],
- "content": "[{\"id\":\"D_r2tq24Wk\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">VSD Fleet</span>\",\"col\":12}},{\"id\":\"eEKQ_vxz6K\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"_FHA1FtdB9\",\"type\":\"card\",\"data\":{\"card_name\":\"Trips\",\"col\":4}},{\"id\":\"tiOnXE60vg\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"tGO5Aw0FPT\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"IlKrKLemox\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Sales Invoices\",\"col\":12}},{\"id\":\"Fvhi34VUqU\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
- "creation": "2026-01-01 13:26:16.245934",
+ "charts": [
+  {
+   "chart_name": "Tiger Trips Trend",
+   "label": "Tiger Trips Trend"
+  }
+ ],
+ "content": "[{\"id\":\"D_r2tq24Wk\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">VSD Fleet</span>\",\"col\":12}},{\"id\":\"91OWmwpL8g\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Tiger Trips Trend\",\"col\":12}},{\"id\":\"C3X8ajgkDM\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Active Trucks\",\"col\":3}},{\"id\":\"hSwNpA9UBu\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Trips This Month\",\"col\":3}},{\"id\":\"3IlOqUUSiQ\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Deliveries Pending\",\"col\":3}},{\"id\":\"oXAyBfTh9r\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Monthly Revenue\",\"col\":3}},{\"id\":\"eEKQ_vxz6K\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"_FHA1FtdB9\",\"type\":\"card\",\"data\":{\"card_name\":\"Trips\",\"col\":4}},{\"id\":\"tiOnXE60vg\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"tGO5Aw0FPT\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"IlKrKLemox\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Sales Invoices\",\"col\":12}},{\"id\":\"Fvhi34VUqU\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "creation": "2026-01-22 12:12:52.605818",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
@@ -241,11 +246,28 @@
    "type": "Link"
   }
  ],
- "modified": "2026-01-01 13:27:53.588734",
+ "modified": "2026-01-22 12:28:18.275021",
  "modified_by": "Administrator",
  "module": "VSD Fleet MS",
  "name": "Tiger Speed",
- "number_cards": [],
+ "number_cards": [
+  {
+   "label": "Active Trucks",
+   "number_card_name": "Active Trucks"
+  },
+  {
+   "label": "Trips This Month",
+   "number_card_name": "Trips This Month"
+  },
+  {
+   "label": "Deliveries Pending",
+   "number_card_name": "Deliveries Pending"
+  },
+  {
+   "label": "Monthly Revenue",
+   "number_card_name": "Monthly Revenue"
+  }
+ ],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
