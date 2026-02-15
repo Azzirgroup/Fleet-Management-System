@@ -5,7 +5,7 @@ import frappe
 import json
 from frappe.query_builder import DocType
 from frappe.model.document import Document
-import datetime
+from frappe.utils import nowdate
 
 class Manifest(Document):
 	def onload(self):
@@ -231,7 +231,7 @@ def create_new_manifest(args_array):
 	args_dict = json.loads(args_array)
 	manifest = frappe.new_doc("Manifest")
 	manifest.route = args_dict.get("cargo_route")
-	manifest.posting_date = datetime.datetime.now().date()
+	manifest.posting_date = nowdate()
 	manifest.append(
 		'manifest_cargo_details',
 		{

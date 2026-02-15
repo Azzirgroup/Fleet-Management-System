@@ -3,10 +3,10 @@
 
 frappe.ui.form.on('Trips', {
 	refresh: function (frm) {
-		approved_total();
-		requested_total();
-		rejected_total();
-		fuel_amount();
+		approved_total(frm);
+		requested_total(frm);
+		rejected_total(frm);
+		fuel_amount(frm);
 		if(frm.doc.docstatus === 1){
 			create_sales_invoice_from_trip(frm)
 		}
@@ -131,22 +131,22 @@ frappe.ui.form.on('Trips', {
         });
     },
 	route: function (frm) {
-		frappe.model.with_doc('Trip Routes', frm.doc.route, function (frm) {
-			var reference_route = frappe.model.get_doc('Trip Routes', cur_frm.doc.route);
-			cur_frm.clear_table('main_route_steps');
+		frappe.model.with_doc('Trip Routes', frm.doc.route, function () {
+			var reference_route = frappe.model.get_doc('Trip Routes', frm.doc.route);
+			frm.clear_table('main_route_steps');
 			reference_route.trip_steps.forEach(function (row) {
-				var new_row = cur_frm.add_child('main_route_steps');
+				var new_row = frm.add_child('main_route_steps');
 				new_row.location = row.location;
 				new_row.distance = row.distance;
 				new_row.fuel_consumption_qty = row.fuel_consumption_qty;
 				new_row.location_type = row.location_type;
-				cur_frm.refresh_field('main_route_steps');
+				frm.refresh_field('main_route_steps');
 			});
-			cur_frm.clear_table('requested_fund_accounts_table');
-        	reference_route.fixed_expenses.forEach(function(row) {
-				frappe.model.with_doc('Fixed Expenses', row.expense, function (frm) {
+			frm.clear_table('requested_fund_accounts_table');
+			reference_route.fixed_expenses.forEach(function(row) {
+				frappe.model.with_doc('Fixed Expenses', row.expense, function () {
 				var fixed_expense_doc = frappe.model.get_doc("Fixed Expenses", row.expense);
-				var new_row = cur_frm.add_child('requested_fund_accounts_table');
+				var new_row = frm.add_child('requested_fund_accounts_table');
 				new_row.requested_date = frappe.datetime.nowdate();
 				new_row.request_amount = row.amount;
 				new_row.request_currency = row.currency;
@@ -155,12 +155,9 @@ frappe.ui.form.on('Trips', {
 				new_row.expense_account = fixed_expense_doc.expense_account;
 				new_row.payable_account = fixed_expense_doc.cash_bank_account;
 				new_row.party_type = row.party_type;
-				// if (row.party_type == "Employee" && cur_frm.doc.assigned_driver) {
-				// 	new_row.party = frappe.db.get_value("Driver", cur_frm.doc.assigned_driver, "employee");
-				// }
-				cur_frm.refresh_field('requested_fund_accounts_table');
+				frm.refresh_field('requested_fund_accounts_table');
 			})
-        });		
+        });
 		});
 	},
 	side_trips_add: function (frm, cdt, cdn) {
@@ -201,8 +198,8 @@ frappe.ui.form.on('Trips', {
 	},
 	date_of_departure_from_border: (frm) => {
 		if (frm.doc.date_of_departure_from_border && frm.doc.arrival_date_at_border){
-			var date1 = frappe.datetime.str_to_obj(cur_frm.doc.date_of_departure_from_border);
-			var date2 = frappe.datetime.str_to_obj(cur_frm.doc.arrival_date_at_border);
+			var date1 = frappe.datetime.str_to_obj(frm.doc.date_of_departure_from_border);
+			var date2 = frappe.datetime.str_to_obj(frm.doc.arrival_date_at_border);
 
 			// Calculate the difference in milliseconds
 			var difference_ms = date1 - date2;
@@ -216,8 +213,8 @@ frappe.ui.form.on('Trips', {
 	},
 	arrival_date_at_border: (frm) => {
 		if (frm.doc.date_of_departure_from_border && frm.doc.arrival_date_at_border){
-			var date1 = frappe.datetime.str_to_obj(cur_frm.doc.date_of_departure_from_border);
-			var date2 = frappe.datetime.str_to_obj(cur_frm.doc.arrival_date_at_border);
+			var date1 = frappe.datetime.str_to_obj(frm.doc.date_of_departure_from_border);
+			var date2 = frappe.datetime.str_to_obj(frm.doc.arrival_date_at_border);
 
 			// Calculate the difference in milliseconds
 			var difference_ms = date1 - date2;
@@ -274,7 +271,7 @@ frappe.ui.form.on('Trips', {
 
 frappe.ui.form.on('Truck Trip Location Update', {
 	view_on_map: function (frm, cdt, cdn) {
-		if (locals[cdt][cdn].latitude & locals[cdt][cdn].longitude) {
+		if (locals[cdt][cdn].latitude && locals[cdt][cdn].longitude) {
 			var url = 'https://www.google.com/maps/search/?api=1&query=' + locals[cdt][cdn].latitude + ',' + locals[cdt][cdn].longitude;
 			var win = window.open(url, '_blank');
 			win.focus();
@@ -302,14 +299,14 @@ frappe.ui.form.on('Fuel Requests Table', {
 		var row = locals[cdt][cdn];
 		if (row.cost_per_litre){
 		row.total_cost = row.quantity * row.cost_per_litre
-		cur_frm.refresh_field("requested_fund_accounts_table")
+		frm.refresh_field("requested_fund_accounts_table")
 		}
 	},
 	cost_per_litre: function(frm, cdt, cdn){
 		var row = locals[cdt][cdn];
 		if (row.quantity){
 		row.total_cost = row.quantity * row.cost_per_litre
-		cur_frm.refresh_field("requested_fund_accounts_table")
+		frm.refresh_field("requested_fund_accounts_table")
 		}
 	},
 });
@@ -337,11 +334,10 @@ frappe.ui.form.on('Requested Fund Details', {
     }
 });
 
-function approved_total(){
-			//For total requested
+function approved_total(frm){
 			var total_request_tsh = 0;
 			var total_request_usd = 0;
-			cur_frm.doc.requested_fund_accounts_table.forEach(function (row) {
+			(frm.doc.requested_fund_accounts_table || []).forEach(function (row) {
 				if (row.request_currency == 'TZS' && row.request_status == "Approved") {
 					total_request_tsh += row.request_amount;
 				}
@@ -349,13 +345,20 @@ function approved_total(){
 					total_request_usd += row.request_amount;
 				}
 			});
-			cur_frm.get_field("html2").wrapper.innerHTML = '<p class="text-muted small">Total Amount Approved</p><b>USD ' + total_request_usd.toLocaleString() + ' <br> TZS ' + total_request_tsh.toLocaleString() + '</b>';
-	
+			var el = frm.get_field("html2").wrapper;
+			el.textContent = '';
+			var p = document.createElement('p');
+			p.className = 'text-muted small';
+			p.textContent = 'Total Amount Approved';
+			el.appendChild(p);
+			var b = document.createElement('b');
+			b.textContent = 'USD ' + total_request_usd.toLocaleString() + ' / TZS ' + total_request_tsh.toLocaleString();
+			el.appendChild(b);
 };
-function requested_total(){
+function requested_total(frm){
 	var total_request_tsh = 0;
 	var total_request_usd = 0;
-	cur_frm.doc.requested_fund_accounts_table.forEach(function (row) {
+	(frm.doc.requested_fund_accounts_table || []).forEach(function (row) {
 		if (row.request_currency == 'TZS' && row.request_status == "Requested") {
 			total_request_tsh += row.request_amount;
 		}
@@ -363,13 +366,20 @@ function requested_total(){
 			total_request_usd += row.request_amount;
 		}
 	});
-	cur_frm.get_field("html").wrapper.innerHTML = '<p class="text-muted small">Total Amount Requested</p><b>USD ' + total_request_usd.toLocaleString() + ' <br> TZS ' + total_request_tsh.toLocaleString() + '</b>';
-
+	var el = frm.get_field("html").wrapper;
+	el.textContent = '';
+	var p = document.createElement('p');
+	p.className = 'text-muted small';
+	p.textContent = 'Total Amount Requested';
+	el.appendChild(p);
+	var b = document.createElement('b');
+	b.textContent = 'USD ' + total_request_usd.toLocaleString() + ' / TZS ' + total_request_tsh.toLocaleString();
+	el.appendChild(b);
 };
-function rejected_total(){
+function rejected_total(frm){
 	var total_request_tsh = 0;
 		var total_request_usd = 0;
-		cur_frm.doc.requested_fund_accounts_table.forEach(function (row) {
+		(frm.doc.requested_fund_accounts_table || []).forEach(function (row) {
 			if (row.request_currency == 'TZS' && row.request_status == "Rejected") {
 				total_request_tsh += row.request_amount;
 			}
@@ -377,14 +387,21 @@ function rejected_total(){
 				total_request_usd += row.request_amount;
 			}
 		});
-		cur_frm.get_field("html3").wrapper.innerHTML = '<p class="text-muted small">Total Amount Rejected</p><b>USD ' + total_request_usd.toLocaleString() + ' <br> TZS ' + total_request_tsh.toLocaleString() + '</b>';
-
+		var el = frm.get_field("html3").wrapper;
+		el.textContent = '';
+		var p = document.createElement('p');
+		p.className = 'text-muted small';
+		p.textContent = 'Total Amount Rejected';
+		el.appendChild(p);
+		var b = document.createElement('b');
+		b.textContent = 'USD ' + total_request_usd.toLocaleString() + ' / TZS ' + total_request_tsh.toLocaleString();
+		el.appendChild(b);
 };
-function fuel_amount(){
+function fuel_amount(frm){
 	var approved_fuel = 0;
 	var requested_fuel = 0;
 	var rejected_fuel = 0;
-	cur_frm.doc.fuel_request_history.forEach(function (row) {
+	(frm.doc.fuel_request_history || []).forEach(function (row) {
 		if (row.status == "Approved") {
 			approved_fuel += row.quantity;
 		}
@@ -395,12 +412,22 @@ function fuel_amount(){
 			rejected_fuel += row.quantity;
 		}
 	});
-	var content = '';
-	content = '<p class="text-muted small">Total Fuel Requested: <b>' + requested_fuel.toLocaleString() + '</b></p>';
-	content += '<p class="text-muted small">Total Fuel Approved: <b>' + approved_fuel.toLocaleString() + '</b></p>';
-	content += '<p class="text-muted small">Total Fuel Rejected: <b>' + rejected_fuel.toLocaleString() + '</b></p>';
-	cur_frm.get_field("html4").wrapper.innerHTML = content;
-
+	var el = frm.get_field("html4").wrapper;
+	el.textContent = '';
+	var lines = [
+		['Total Fuel Requested: ', requested_fuel],
+		['Total Fuel Approved: ', approved_fuel],
+		['Total Fuel Rejected: ', rejected_fuel]
+	];
+	lines.forEach(function(line) {
+		var p = document.createElement('p');
+		p.className = 'text-muted small';
+		p.textContent = line[0];
+		var b = document.createElement('b');
+		b.textContent = line[1].toLocaleString();
+		p.appendChild(b);
+		el.appendChild(p);
+	});
 }
 function create_sales_invoice_from_trip(frm) {
     if (!frm.is_new()) {

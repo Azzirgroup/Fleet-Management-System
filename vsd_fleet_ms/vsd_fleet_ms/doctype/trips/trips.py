@@ -1,17 +1,12 @@
 # Copyright (c) 2023, VV SYSTEMS DEVELOPER LTD and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
-from operator import mul
 import frappe
-import time
-import datetime
+import json
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-import json
-from frappe.utils import nowdate, cstr, cint, flt, comma_or, now
+from frappe.utils import nowdate, now_datetime, now, cstr, cint, flt, comma_or
 from frappe import _, msgprint
-from frappe.model.document import Document
 from vsd_fleet_ms.utils.dimension import set_dimension
 from erpnext.setup.utils import get_exchange_rate
 from vsd_fleet_ms.vsd_fleet_ms.doctype.requested_payment.requested_payment import request_funds
@@ -121,7 +116,7 @@ class Trips(Document):
 
     def before_save(self):
         if not self.date:
-            self.date = datetime.datetime.now()
+            self.date = now_datetime()
         # validate_requested_funds(self)
         self.validate_main_route_inputs()
         self.calculate_total_main_route_steps_information()
@@ -167,11 +162,7 @@ class Trips(Document):
                 {"reference_doctype": "Trips", "reference_docname": self.name},
             )
 
-            # Timestamp
-            ts = time.time()
-            timestamp = datetime.datetime.fromtimestamp(ts).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
+            timestamp = now()
 
             if existing_fuel_request:
                 doc = frappe.get_doc("Fuel Requests", existing_fuel_request)
@@ -379,7 +370,7 @@ def make_vehicle_inspection(source_name, target_doc=None, ignore_permissions=Fal
     return docs
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def check_trip_status(**args):
     args = frappe._dict(args)
     frappe.msgprint("ok")

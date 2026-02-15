@@ -44,7 +44,7 @@ class Truck(Document):
 			else:
 				self.status = "Disabled"
 		if self.status == "Disabled":
-			self.disabled == 1
+			self.disabled = 1
 
 	def calculate_total_capacity(self):
 		"""Calculate total capacity from all compartments"""

@@ -157,7 +157,7 @@ frappe.ui.form.on('Cargo Detail', {
 						"container_number":row.container_number,
 						"cargo_loading_city":row.cargo_location_city,
 						"cargo_location_country":row.cargo_location_country,
-						"parent_doctype_name":cur_frm.doc.name
+						"parent_doctype_name":frm.doc.name
 					}
 					handle_create_manifest_Click(args_array);
 					// Close the dialog
@@ -188,7 +188,7 @@ frappe.ui.form.on('Cargo Detail', {
 							"container_number":row.container_number,
 							"cargo_loading_city":row.cargo_location_city,
 							"cargo_location_country":row.cargo_location_country,
-							"parent_doctype_name":cur_frm.doc.name
+							"parent_doctype_name":frm.doc.name
 						}
 						handle_Assign_Button_Click(args_array);
 						// Close the dialog

@@ -1,27 +1,71 @@
 # Copyright (c) 2023, VV SYSTEMS DEVELOPER LTD and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import json
 import frappe
-import time
-import datetime
 from frappe.model.document import Document
 from frappe import _, msgprint
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import nowdate
+from frappe.utils import nowdate, now
 
 class FuelRequests(Document):
     def onload(self):
-        trip = frappe.get_doc(self.reference_doctype, self.reference_docname)
-        if not self.main_route:
-            self.set("main_route", trip.route)
-        if not self.truck:
-            self.set("truck", trip.truck_number)
-        if not self.truck_driver:
-            self.set("truck_driver", trip.assigned_driver)
-        if not self.driver_name:
-            self.set("driver_name", trip.driver_name)
+        if self.reference_doctype and self.reference_docname:
+            trip = frappe.get_doc(self.reference_doctype, self.reference_docname)
+            if not self.main_route:
+                self.set("main_route", trip.route)
+            if not self.truck:
+                self.set("truck", trip.truck_number)
+            if not self.truck_driver:
+                self.set("truck_driver", trip.assigned_driver)
+            if not self.driver_name:
+                self.set("driver_name", trip.driver_name)
+
+        # Load virtual child tables from reference document
+        self._load_virtual_children()
+
+    def _load_virtual_children(self):
+        """Load child table data from the reference document's fuel request history."""
+        if not self.get("reference_docname") or not self.get("reference_doctype"):
+            return
+
+        ref_docname = self.get("reference_docname")
+        ref_doctype = self.get("reference_doctype")
+
+        # Get the child table DocType from meta
+        table_fields = {df.fieldname: df for df in self.meta.get_table_fields()}
+
+        if "approved_requests" in table_fields:
+            df = table_fields["approved_requests"]
+            children = frappe.db.get_values(
+                df.options,
+                {
+                    "parent": ref_docname,
+                    "parenttype": ref_doctype,
+                    "parentfield": ["in", ("fuel_request_history", "return_fuel_request")],
+                    "status": ["in", ("Approved", "Rejected")],
+                },
+                "*",
+                as_dict=True,
+                order_by="idx asc",
+            )
+            self.set("approved_requests", children or [])
+
+        if "requested_fuel" in table_fields:
+            df = table_fields["requested_fuel"]
+            children = frappe.db.get_values(
+                df.options,
+                {
+                    "parent": ref_docname,
+                    "parenttype": ref_doctype,
+                    "parentfield": ["in", ("fuel_request_history", "return_fuel_request")],
+                    "status": "Requested",
+                },
+                "*",
+                as_dict=True,
+                order_by="idx asc",
+            )
+            self.set("requested_fuel", children or [])
 
     def get_all_children(self, parenttype=None):
         # For getting children
@@ -39,135 +83,7 @@ class FuelRequests(Document):
             doc.db_set("receipt_time", row.receipt_time)
             doc.db_set("received_by", row.received_by)
 
-    def load_from_db(self):
-        """Load document and children from database and create properties
-        from fields"""
-        if not getattr(self, "_metaclass", False) and self.meta.issingle:
-            single_doc = frappe.db.get_singles_dict(self.doctype)
-            if not single_doc:
-                single_doc = frappe.new_doc(self.doctype).as_dict()
-                single_doc["name"] = self.doctype
-                del single_doc["__islocal"]
-
-            super(Document, self).__init__(single_doc)
-            self.init_valid_columns()
-            self._fix_numeric_types()
-
-        else:
-            d = frappe.db.get_value(self.doctype, self.name, "*", as_dict=1)
-            if not d:
-                frappe.throw(
-                    _("{0} {1} not found").format(_(self.doctype), self.name),
-                    frappe.DoesNotExistError,
-                )
-
-            super(Document, self).__init__(d)
-
-        if self.name == "DocType" and self.doctype == "DocType":
-            from frappe.model.meta import doctype_table_fields
-
-            table_fields = doctype_table_fields
-        else:
-            table_fields = self.meta.get_table_fields()
-
-        for df in table_fields:
-            if df.fieldname == "approved_requests":
-                # Load approved or rejected requests
-                children_main_approved = frappe.db.get_values(
-                    df.options,
-                    {
-                        "parent": self.get("reference_docname"),
-                        "parenttype": self.get("reference_doctype"),
-                        "parentfield": "fuel_request_history",
-                        "status": "Approved",
-                    },
-                    "*",
-                    as_dict=True,
-                    order_by="idx asc",
-                )
-                children_main_rejected = frappe.db.get_values(
-                    df.options,
-                    {
-                        "parent": self.get("reference_docname"),
-                        "parenttype": self.get("reference_doctype"),
-                        "parentfield": "fuel_request_history",
-                        "status": "Rejected",
-                    },
-                    "*",
-                    as_dict=True,
-                    order_by="idx asc",
-                )
-                children_return_approved = frappe.db.get_values(
-                    df.options,
-                    {
-                        "parent": self.get("reference_docname"),
-                        "parenttype": self.get("reference_doctype"),
-                        "parentfield": "return_fuel_request",
-                        "status": "Approved",
-                    },
-                    "*",
-                    as_dict=True,
-                    order_by="idx asc",
-                )
-                children_return_rejected = frappe.db.get_values(
-                    df.options,
-                    {
-                        "parent": self.get("reference_docname"),
-                        "parenttype": self.get("reference_doctype"),
-                        "parentfield": "return_fuel_request",
-                        "status": "Rejected",
-                    },
-                    "*",
-                    as_dict=True,
-                    order_by="idx asc",
-                )
-                children = (
-                    children_main_approved
-                    + children_main_rejected
-                    + children_return_approved
-                    + children_return_rejected
-                )
-                if children:
-                    self.set(df.fieldname, children)
-                else:
-                    self.set(df.fieldname, [])
-            elif df.fieldname == "requested_fuel":
-                # Load requests which are not approved nor rejected
-                children_main_requested = frappe.db.get_values(
-                    df.options,
-                    {
-                        "parent": self.get("reference_docname"),
-                        "parenttype": self.get("reference_doctype"),
-                        "parentfield": "fuel_request_history",
-                        "status": "Requested",
-                    },
-                    "*",
-                    as_dict=True,
-                    order_by="idx asc",
-                )
-                children_return_requested = frappe.db.get_values(
-                    df.options,
-                    {
-                        "parent": self.get("reference_docname"),
-                        "parenttype": self.get("reference_doctype"),
-                        "parentfield": "return_fuel_request",
-                        "status": "Requested",
-                    },
-                    "*",
-                    as_dict=True,
-                    order_by="idx asc",
-                )
-                children = children_main_requested + children_return_requested
-                if children:
-                    self.set(df.fieldname, children)
-                else:
-                    self.set(df.fieldname, [])
-
-        # sometimes __setup__ can depend on child values, hence calling again at the end
-        if hasattr(self, "__setup__"):
-            self.__setup__()
-
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def set_status(doc):
     parent_doc_name = frappe.db.get_value("Fuel Requests Table", doc, "parent")
     fuel_requests = frappe.db.sql(
@@ -195,13 +111,10 @@ def set_status(doc):
         parent_request_doc.db_set("status", status)
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def approve_request(**args):
     args = frappe._dict(args)
-
-    # Timestamp
-    ts = time.time()
-    timestamp = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = now()
 
     doc = frappe.get_doc("Fuel Requests Table", args.request_docname)
     doc.db_set("status", "Approved")
@@ -211,13 +124,10 @@ def approve_request(**args):
     return "Request Updated"
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def reject_request(**args):
     args = frappe._dict(args)
-
-    # Timestamp
-    ts = time.time()
-    timestamp = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = now()
 
     doc = frappe.get_doc("Fuel Requests Table", args.request_docname)
     doc.db_set("status", "Rejected")

@@ -1,14 +1,10 @@
 # Copyright (c) 2023, VV SYSTEMS DEVELOPER LTD and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
-from operator import mul
 import frappe
-import time
-import datetime
+import json
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-import json
 from frappe.utils import nowdate, cstr, cint, flt, comma_or, now
 from frappe import _, msgprint
 from vsd_fleet_ms.utils.dimension import set_dimension
@@ -77,11 +73,15 @@ def create_sales_invoice(doc, rows):
             item_row_per.append([row, item])
             items.append(item)
         
+    # Use currency from last processed row (rows is non-empty at this point)
+    invoice_currency = rows[-1]["currency"] if rows else "TZS"
+    last_row = rows[-1] if rows else {}
+
     invoice = frappe.get_doc(
         dict(
             doctype="Sales Invoice",
             customer=doc.customer,
-            currency=row["currency"],
+            currency=invoice_currency,
             posting_date=nowdate(),
             company=doc.company,
             items=items,
@@ -89,7 +89,7 @@ def create_sales_invoice(doc, rows):
         ),
     )
 
-    set_dimension(doc, invoice, src_child=row)
+    set_dimension(doc, invoice, src_child=last_row)
     invoice.items = []
     for i in item_row_per:
         set_dimension(doc, invoice, src_child=i[0], tr_child=i[1])

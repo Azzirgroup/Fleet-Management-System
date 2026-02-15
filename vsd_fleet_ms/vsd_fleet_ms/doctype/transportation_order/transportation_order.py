@@ -1,13 +1,10 @@
 # Copyright (c) 2023, VV SYSTEMS DEVELOPER LTD and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
-import time
-import datetime
+import json
 from frappe.model.document import Document
 from frappe import _
-import json
 from frappe.utils import nowdate
 from vsd_fleet_ms.utils.dimension import set_dimension
 
@@ -100,105 +97,56 @@ class TransportationOrder(Document):
 				d.parent = self.name
 				d.parenttype = self.doctype'''
 
-    # Custom load method for loading child tables data from imports and exports request
-    def load_from_db(self):
-        """Load document and children from database and create properties
-        from fields"""
-        if not getattr(self, "_metaclass", False) and self.meta.issingle:
-            single_doc = frappe.db.get_singles_dict(self.doctype)
-            if not single_doc:
-                single_doc = frappe.new_doc(self.doctype).as_dict()
-                single_doc["name"] = self.doctype
-                del single_doc["__islocal"]
+    def onload(self):
+        """Load virtual child tables from reference document if applicable."""
+        self._load_virtual_children()
 
-            super(Document, self).__init__(single_doc)
-            self.init_valid_columns()
-            self._fix_numeric_types()
+    def _load_virtual_children(self):
+        """Load child table data from import/export reference documents."""
+        if not self.get("reference_doctype") or not self.get("reference_docname"):
+            return
 
-        else:
-            d = frappe.db.get_value(self.doctype, self.name, "*", as_dict=1)
-            if not d:
-                frappe.throw(
-                    _("{0} {1} not found").format(_(self.doctype), self.name),
-                    frappe.DoesNotExistError,
-                )
+        ref_doctype = self.get("reference_doctype")
+        ref_docname = self.get("reference_docname")
 
-            super(Document, self).__init__(d)
-
-        if self.name == "DocType" and self.doctype == "DocType":
-            from frappe.model.meta import doctype_table_fields
-
-            table_fields = doctype_table_fields
-        else:
-            table_fields = self.meta.get_table_fields()
-
-        #
-        # For table fields load from request origin(if there is) else load normal
-        # Also add back compatibiilty for when transport assignements were being loaded from import
-        #
-        for df in table_fields:
-            if d.reference_doctype and d.reference_docname:
-                # Fieldname depending on if it's Export or Import
-                if d.reference_doctype == "Import" and df.fieldname == "cargo":
-                    fieldname = "cargo_information"
-                elif (
-                    d.reference_doctype == "Import"
-                    and df.fieldname == "assign_transport"
-                ):
-                    fieldname = "assign_transport"
-
-                if df.fieldname == "assign_transport" and self.get("version") == 2:
-                    children = frappe.db.get_values(
-                        df.options,
-                        {
-                            "parent": self.name,
-                            "parenttype": self.doctype,
-                            "parentfield": "assign_transport",
-                        },
-                        "*",
-                        as_dict=True,
-                        order_by="idx asc",
-                    )
-                else:
-                    children = frappe.db.get_values(
-                        df.options,
-                        {
-                            "parent": d.reference_docname,
-                            "parenttype": d.reference_doctype,
-                            "parentfield": fieldname,
-                        },
-                        "*",
-                        as_dict=True,
-                        order_by="idx asc",
-                    )
-
-                if children:
-                    self.set(df.fieldname, children)
-                else:
-                    self.set(df.fieldname, [])
-            else:
+        for df in self.meta.get_table_fields():
+            # For v2 transport assignments, load from self
+            if df.fieldname == "assign_transport" and self.get("version") == 2:
                 children = frappe.db.get_values(
                     df.options,
                     {
                         "parent": self.name,
                         "parenttype": self.doctype,
-                        "parentfield": df.fieldname,
+                        "parentfield": "assign_transport",
                     },
                     "*",
                     as_dict=True,
                     order_by="idx asc",
                 )
-                if children:
-                    self.set(df.fieldname, children)
-                else:
-                    self.set(df.fieldname, [])
+            else:
+                # Determine the parentfield based on reference type
+                fieldname = df.fieldname
+                if ref_doctype == "Import" and df.fieldname == "cargo":
+                    fieldname = "cargo_information"
+                elif ref_doctype == "Import" and df.fieldname == "assign_transport":
+                    fieldname = "assign_transport"
 
-        # sometimes __setup__ can depend on child values, hence calling again at the end
-        if hasattr(self, "__setup__"):
-            self.__setup__()
+                children = frappe.db.get_values(
+                    df.options,
+                    {
+                        "parent": ref_docname,
+                        "parenttype": ref_doctype,
+                        "parentfield": fieldname,
+                    },
+                    "*",
+                    as_dict=True,
+                    order_by="idx asc",
+                )
+
+            self.set(df.fieldname, children or [])
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def transport_order_scheduler():
     # Create requests for imports less than 10 days to eta
     for row in frappe.db.sql(
@@ -212,17 +160,13 @@ def transport_order_scheduler():
         )
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_transport_order(**args):
     args = frappe._dict(args)
 
     existing_transport_order = frappe.db.get_value(
         "Transportation Order", {"file_number": args.file_number}
     )
-
-    # Timestamp
-    ts = time.time()
-    timestamp = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
     if not existing_transport_order:
         request = frappe.new_doc("Transportation Order")
@@ -249,7 +193,7 @@ def create_transport_order(**args):
         return existing_transport_order
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def assign_vehicle(**args):
     args = frappe._dict(args)
 
@@ -344,18 +288,22 @@ def create_sales_invoice(doc, rows):
         item_row_per.append([row, item])
         items.append(item)
         
+    # Use currency from last processed row (rows is non-empty at this point)
+    invoice_currency = rows[-1]["currency"] if rows else "TZS"
+    last_row = rows[-1] if rows else {}
+
     invoice = frappe.get_doc(
         dict(
             doctype="Sales Invoice",
             customer=doc.customer,
-            currency=row["currency"],
+            currency=invoice_currency,
             posting_date=nowdate(),
             company=doc.company,
             items=items,
         ),
     )
 
-    set_dimension(doc, invoice, src_child=row)
+    set_dimension(doc, invoice, src_child=last_row)
     invoice.items = []
     for i in item_row_per:
         set_dimension(doc, invoice, src_child=i[0], tr_child=i[1])

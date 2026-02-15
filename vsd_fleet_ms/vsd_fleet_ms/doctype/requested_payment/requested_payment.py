@@ -1,13 +1,10 @@
 # Copyright (c) 2023, VV SYSTEMS DEVELOPER LTD and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
-import time
-import datetime
 import json
 from frappe.model.document import Document
-from frappe.utils import flt, comma_or, nowdate
+from frappe.utils import flt, comma_or, nowdate, now, formatdate
 from frappe import msgprint, _
 from erpnext.accounts.general_ledger import process_gl_map, save_entries
 from erpnext.accounts.utils import (
@@ -21,7 +18,58 @@ from erpnext.accounts.doctype.budget.budget import validate_expense_against_budg
 
 class RequestedPayment(Document):
     def onload(self):
-        pass
+        # Load virtual child tables from reference document
+        self._load_virtual_children()
+
+    def _load_virtual_children(self):
+        """Load child table data from the reference document's fund request tables."""
+        if not self.get("reference_docname") or not self.get("reference_doctype"):
+            return
+
+        ref_docname = self.get("reference_docname")
+        ref_doctype = self.get("reference_doctype")
+        parentfields = (
+            "requested_funds",
+            "requested_fund_accounts_table",
+            "return_requested_funds",
+            "requested_fund",
+        )
+
+        # requested_funds: pending requests
+        children = frappe.db.get_values(
+            "Requested Fund Details",
+            {
+                "parent": ref_docname,
+                "parenttype": ref_doctype,
+                "parentfield": ["in", parentfields],
+                "request_status": ["in", ("open", "Requested", "Recommended", "Pre-Approved")],
+            },
+            "*",
+            as_dict=True,
+            order_by="idx asc",
+        )
+        self.set("requested_funds", children or [])
+
+        # accounts_approval: processed requests
+        children = frappe.db.get_values(
+            "Requested Fund Details",
+            {
+                "parent": ref_docname,
+                "parenttype": ref_doctype,
+                "parentfield": ["in", parentfields],
+                "request_status": [
+                    "in",
+                    ("Approved", "Rejected", "Accounts Approved", "Accounts Rejected", "Accounts Cancelled"),
+                ],
+            },
+            "*",
+            as_dict=True,
+            order_by="idx asc",
+        )
+        if children:
+            for child in children:
+                child.reference = child.name
+        self.set("accounts_approval", children or [])
 
     def get_all_children(self, parenttype=None):
         # For getting children
@@ -31,134 +79,11 @@ class RequestedPayment(Document):
         """update child tables"""
         self.update_child_table("payment_reference")
 
-    def load_from_db(self):
-        """Load document and children from database and create properties
-        from fields"""
-        if not getattr(self, "_metaclass", False) and self.meta.issingle:
-            single_doc = frappe.db.get_singles_dict(self.doctype)
-            if not single_doc:
-                single_doc = frappe.new_doc(self.doctype).as_dict()
-                single_doc["name"] = self.doctype
-                del single_doc["__islocal"]
-
-            super(Document, self).__init__(single_doc)
-            self.init_valid_columns()
-            self._fix_numeric_types()
-
-        else:
-            d = frappe.db.get_value(self.doctype, self.name, "*", as_dict=1)
-            if not d:
-                frappe.throw(
-                    _("{0} {1} not found").format(_(self.doctype), self.name),
-                    frappe.DoesNotExistError,
-                )
-
-            super(Document, self).__init__(d)
-
-        if self.name == "DocType" and self.doctype == "DocType":
-            from frappe.model.meta import doctype_table_fields
-
-            table_fields = doctype_table_fields
-        else:
-            table_fields = self.meta.get_table_fields()
-
-        for df in table_fields:
-            # Load details for payments already paid
-            if df.fieldname == "payment_reference":
-                children = frappe.db.get_values(
-                    df.options,
-                    {
-                        "parent": self.name,
-                        "parenttype": self.doctype,
-                        "parentfield": df.fieldname,
-                    },
-                    "*",
-                    as_dict=True,
-                    order_by="idx asc",
-                )
-                if children:
-                    self.set(df.fieldname, children)
-                else:
-                    self.set(df.fieldname, [])
-            elif (
-                df.fieldname == "requested_funds"
-            ):  # Load requests which are not approved nor rejected
-                children = frappe.db.get_values(
-                    df.options,
-                    {
-                        "parent": ["=", self.get("reference_docname")],
-                        "parenttype": ["=", self.get("reference_doctype")],
-                        "parentfield": [
-                            "in",
-                            (
-                                "requested_funds",
-                                "requested_fund_accounts_table",
-                                "return_requested_funds",
-                                "requested_fund"
-                            ),
-                        ],
-                        "request_status": [
-                            "in",
-                            ("open", "Requested", "Recommended", "Pre-Approved"),
-                        ],
-                    },
-                    "*",
-                    as_dict=True,
-                    order_by="idx asc",
-                )
-                if children:
-                    self.set(df.fieldname, children)
-                else:
-                    self.set(df.fieldname, [])
-            elif df.fieldname == "accounts_approval":
-                children = frappe.db.get_values(
-                    "Requested Fund Details",
-                    {
-                        "parent": ["=", self.get("reference_docname")],
-                        "parenttype": ["=", self.get("reference_doctype")],
-                        "parentfield": [
-                            "in",
-                            (
-                                "requested_funds",
-                                "requested_fund_accounts_table",
-                                "return_requested_funds",
-                                "requested_fund"
-                            ),
-                        ],
-                        "request_status": [
-                            "in",
-                            (
-                                "Approved",
-                                "Rejected",
-                                "Accounts Approved",
-                                "Accounts Rejected",
-                                "Accounts Cancelled",
-                            ),
-                        ],
-                    },
-                    "*",
-                    as_dict=True,
-                    order_by="idx asc",
-                )
-                if children:
-                    for child in children:
-                        child.reference = child.name
-                    self.set(df.fieldname, children)
-                else:
-                    self.set(df.fieldname, [])
-
-        # sometimes __setup__ can depend on child values, hence calling again at the end
-        if hasattr(self, "__setup__"):
-            self.__setup__()
-
 
 def get_outstanding_payments(self, account_currency):
-    # Timestamp
-    ts = time.time()
-
     # Initialize values
     total_amount = outstanding_amount = 0
-    due_date = datetime.datetime.now().date()
+    due_date = frappe.utils.today()
 
     requested_from = frappe.get_doc(self.reference_doctype, self.reference_docname)
     if self.reference_doctype == "Trips":
@@ -234,7 +159,7 @@ def validate_requested_funds(doc):
                 open_request.set("request_status", "Requested")
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def request_funds(**args):
     args = frappe._dict(args)
     existing_payment_request = frappe.db.get_value(
@@ -245,9 +170,7 @@ def request_funds(**args):
         },
     )
 
-    # Timestamp
-    ts = time.time()
-    timestamp = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = now()
 
     if existing_payment_request:
         # Mark the request as open
@@ -275,7 +198,7 @@ def request_funds(**args):
         return "Request Inserted"
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def recommend_request(**args):
     args = frappe._dict(args)
 
@@ -289,7 +212,7 @@ def recommend_request(**args):
     return "Request Updated"
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def recommend_against_request(**args):
     args = frappe._dict(args)
 
@@ -303,13 +226,11 @@ def recommend_against_request(**args):
     return "Request Updated"
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def approve_request(**args):
     args = frappe._dict(args)
 
-    # frappe.db.sql("UPDATE `tabRequested Funds Details` SET request_status = 'Approved', request_hidden_status = 0 WHERE name = %s", args.request_docname)
-    # return args.request_docname
-    # Mark the request as open
+    # Mark the request as approved
     doc = frappe.get_doc("Requested Fund Details", args.request_docname)
     doc.db_set("request_status", "Approved")
     doc.db_set("request_hidden_status", "1")
@@ -317,13 +238,11 @@ def approve_request(**args):
     return "Request Updated"
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def reject_request(**args):
     args = frappe._dict(args)
 
-    # frappe.db.sql("UPDATE `tabRequested Funds Details` SET request_status = 'Rejected', request_hidden_status = 0 WHERE name = %s", args.request_docname)
-    # return "OK"
-    # Mark the request as open
+    # Mark the request as rejected
     doc = frappe.get_doc("Requested Fund Details", args.request_docname)
     doc.db_set("request_status", "Rejected")
     doc.db_set("request_hidden_status", "2")
@@ -331,7 +250,7 @@ def reject_request(**args):
     return "Request Updated"
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def accounts_approval(**args):
     args = frappe._dict(args)
     local = json.loads(args.local)
@@ -387,7 +306,7 @@ def accounts_approval(**args):
             return "Request Updated"
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def accounts_cancel(**args):
     args = frappe._dict(args)
     local = json.loads(args.local)
@@ -536,7 +455,7 @@ def get_gl_dict(doc, data, args, account_currency=None):
         frappe.throw(
             _(
                 "Multiple fiscal years exist for the date {0}. Please set company in Fiscal Year"
-            ).format(formatdate(self.posting_date))
+            ).format(formatdate(data.posting_date))
         )
     else:
         fiscal_year = fiscal_years[0][0]
@@ -683,7 +602,7 @@ def update_payment_status(doc):
         )
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def reference_payment(**args):
     args = frappe._dict(args)
 
@@ -708,7 +627,7 @@ def reference_payment(**args):
     return "inserted"
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def make_payment(source_name, target_doc=None, ignore_permissions=False):
     pe = frappe.new_doc("Payment Entry")
     pe.payment_type = "Pay"
@@ -720,12 +639,10 @@ def make_payment(source_name, target_doc=None, ignore_permissions=False):
     return pe
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def approve_request(**args):
     args = frappe._dict(args)
-    # Timestamp
-    ts = time.time()
-    timestamp = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = now()
     doc = frappe.get_doc("Requested Fund Details", args.request_docname)
     doc.db_set("request_status", "Approved")
     doc.db_set("approved_by", args.user)
@@ -733,12 +650,10 @@ def approve_request(**args):
     return "Request Updated"
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def reject_request(**args):
     args = frappe._dict(args)
-    # Timestamp
-    ts = time.time()
-    timestamp = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = now()
 
     doc = frappe.get_doc("Requested Fund Details", args.request_docname)
     doc.db_set("request_status", "Rejected")

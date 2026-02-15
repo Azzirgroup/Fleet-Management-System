@@ -281,5 +281,6 @@
  "roles": [],
  "sequence_id": 1.0,
  "shortcuts": [],
- "title": "Tiger Speed"
+ "title": "Tiger Speed",
+ "type": "Workspace"
 }

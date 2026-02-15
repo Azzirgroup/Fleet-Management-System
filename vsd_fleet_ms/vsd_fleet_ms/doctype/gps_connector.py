@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import frappe
 import sys
 import psycopg2
@@ -8,10 +7,10 @@ def connect_to_server():
 	conn = None
 	try:
 		conn = 'test'
-	except ex:
+	except Exception as ex:
 		print('Unable to connect the database: ' + str(ex))
 		sys.exit(1)
-	
+
 	return conn
 	
 def record_vehicle_position(vehicle_plate_no, gps_timestamp, location, longitude, latitude):
@@ -62,13 +61,13 @@ def record_vehicle_position(vehicle_plate_no, gps_timestamp, location, longitude
 				return "Trip location update is more current"
 	
   
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_last_location(vehicle_plate_no):
 	if vehicle_plate_no and vehicle_plate_no != '':
-		connection = connect_to_server() 
+		connection = connect_to_server()
 		if connection:
 			curs = connection.cursor()
-			curs.execute("SELECT gdlatitude, gdlongitude, gdlocation, gdtimestamp, gdhorseplateno FROM gps_devices WHERE UPPER(gdhorseplateno) = UPPER('" + vehicle_plate_no + "')")
+			curs.execute("SELECT gdlatitude, gdlongitude, gdlocation, gdtimestamp, gdhorseplateno FROM gps_devices WHERE UPPER(gdhorseplateno) = UPPER(%s)", (vehicle_plate_no,))
 			result = []
 			for row in curs:
 				clean_row = {}
@@ -84,7 +83,7 @@ def get_last_location(vehicle_plate_no):
 				return "There is no tracking data."
 		
 		
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def load_cargo(**args):
 	args = frappe._dict(args)
 	vehicle_plate_number = args.vehicle_plate_number
@@ -98,7 +97,7 @@ def load_cargo(**args):
 			curs.execute("""UPDATE gps_devices SET gdactive = TRUE, gdcargo = 'COTTON', gdloaded = %s, gddestination = %s WHERE UPPER(gdhorseplateno) = UPPER(%s)""", (loading_date, destination, vehicle_plate_number))
 			connection.commit()
 	
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def offload_cargo(**args):
 	args = frappe._dict(args)
 	vehicle_plate_number = args.vehicle_plate_number
@@ -110,7 +109,7 @@ def offload_cargo(**args):
 			connection.commit()
 	
 		
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def loop_through_vehicles(**args):
 	print("Executed: " + str(datetime.now()))
 	args = frappe._dict(args)
