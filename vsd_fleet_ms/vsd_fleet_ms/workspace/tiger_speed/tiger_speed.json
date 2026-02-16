@@ -17,6 +17,7 @@
  "indicator_color": "",
  "is_hidden": 0,
  "label": "Tiger Speed",
+ "type": "Workspace",
  "links": [
   {
    "hidden": 0,
