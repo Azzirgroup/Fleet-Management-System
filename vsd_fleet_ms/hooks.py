@@ -7,6 +7,8 @@ app_description = "Fleet Management System"
 app_email = "info@vvsdtz.com"
 app_license = "MIT"
 
+required_apps = ["erpnext"]
+
 # Includes in <head>
 # ------------------
 
@@ -211,5 +213,7 @@ fixtures = [
             ]
         ],
     },
+    {"dt": "Number Card", "filters": [["module", "=", "VSD Fleet MS"]]},
+    {"dt": "Dashboard Chart", "filters": [["module", "=", "VSD Fleet MS"]]},
     {"dt": "Workspace", "filters": [["module", "=", "VSD Fleet MS"]]},
 ]
