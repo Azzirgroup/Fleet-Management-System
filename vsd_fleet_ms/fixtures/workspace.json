@@ -16,7 +16,7 @@
   "doctype": "Workspace",
   "for_user": "",
   "hide_custom": 0,
-  "icon": "map",
+  "icon": "/assets/pitot_energy/images/tiger_speed.svg",
   "indicator_color": "",
   "is_hidden": 0,
   "label": "Tiger Speed",
