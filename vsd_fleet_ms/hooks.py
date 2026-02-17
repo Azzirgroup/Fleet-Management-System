@@ -213,7 +213,5 @@ fixtures = [
             ]
         ],
     },
-    {"dt": "Number Card", "filters": [["module", "=", "VSD Fleet MS"]]},
-    {"dt": "Dashboard Chart", "filters": [["module", "=", "VSD Fleet MS"]]},
     {"dt": "Workspace", "filters": [["module", "=", "VSD Fleet MS"]]},
 ]
